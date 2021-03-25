@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using TextCopy;
+using VH.RemoteClipboard.Services;
 
 namespace VH.RemoteClipboard
 {
@@ -15,7 +16,10 @@ namespace VH.RemoteClipboard
              Host.CreateDefaultBuilder(args)
                 .ConfigureServices((hostContext, services) =>
                 {
-                    services.AddHostedService<Worker>();
+                    services.AddHostedService<FetchClipboardDataHostedService>();
+                    //services.AddHostedService<SetClipboardDataHostedService>();
+
+                    services.AddScoped<IShareClipboardService, AzureServiceBusShareClipboardService>();
 
                     services.InjectClipboard();
                 });

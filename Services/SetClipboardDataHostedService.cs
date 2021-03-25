@@ -4,14 +4,14 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using TextCopy;
 
-namespace VH.RemoteClipboard
+namespace VH.RemoteClipboard.Services
 {
-    public class Worker : IHostedService
+    public class SetClipboardDataHostedService : IHostedService
     {
-        private readonly ILogger<Worker> _logger;
+        private readonly ILogger _logger;
         private readonly IClipboard clipboard;
 
-        public Worker(ILogger<Worker> logger, IClipboard clipboard)
+        public SetClipboardDataHostedService(ILogger<SetClipboardDataHostedService> logger, IClipboard clipboard)
         {
             _logger = logger;
             this.clipboard = clipboard;
@@ -19,8 +19,6 @@ namespace VH.RemoteClipboard
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            await clipboard.SetTextAsync("Text to place in clipboard1");
-
             _logger.LogDebug("Setting value to clipboard {}");
         }
 
