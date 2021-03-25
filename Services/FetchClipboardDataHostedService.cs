@@ -42,7 +42,7 @@ namespace VH.RemoteClipboard.Services
 
         private void RunWatcherTimer()
         {
-            var myTimer = new System.Timers.Timer();
+            System.Timers.Timer myTimer = new System.Timers.Timer();
 
             myTimer.Elapsed += new ElapsedEventHandler(HandleElapsedTimer);
             myTimer.Interval = 5000;
@@ -51,20 +51,26 @@ namespace VH.RemoteClipboard.Services
 
         private async void HandleElapsedTimer(object sender, ElapsedEventArgs e)
         {
+            System.Timers.Timer myTimer = sender as System.Timers.Timer;
+
+            myTimer.Enabled = false;
+
             string clipboardData = clipboard.GetText();
 
-            if (string.IsNullOrWhiteSpace(clipboardData) || clipboardData.Equals(ClipboardDataCache, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(clipboardData) && !clipboardData.Equals(ClipboardDataCache, StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogDebug("Setting value to clipboard [{clipboardData}]", clipboardData);
+
+                ClipboardDataCache = clipboardData;
+
+                await shareClipboardService.ShareClipboardDataAsync(clipboardData);
+            }
+            else
             {
                 logger.LogDebug("Clipboard data is empty or has not been changed");
-
-                return;
             }
 
-            logger.LogDebug("Setting value to clipboard [{clipboardData}]", clipboardData);
-
-            ClipboardDataCache = clipboardData;
-
-            await shareClipboardService.ShareClipboardDataAsync(clipboardData);
+            myTimer.Enabled = true;
         }
     }
 }
