@@ -57,6 +57,8 @@ namespace VH.RemoteClipboard.Services
             await clipboard.SetTextAsync(messageBody);
 
             logger.LogDebug("Fetched message [{messageBody}]", messageBody);
+
+            logger.LogInformation("Local clipboard updated at [{dateTimeNowUtc}]", DateTime.UtcNow);
         }
 
         private Task ErrorHandler(ProcessErrorEventArgs args)

@@ -23,6 +23,8 @@ namespace VH.RemoteClipboard.Services
             await ReceiveAndDeleteMessagesAsync();
 
             await SendMessageAsync(value);
+
+            logger.LogInformation("Current clipboard changes detected at [{dateTimeNowUtc}]", DateTime.UtcNow);
         }
 
         private async Task SendMessageAsync(string value)
