@@ -25,7 +25,14 @@ namespace VH.RemoteClipboard.Services
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            RunWatcherTimer();
+            try
+            {
+                RunWatcherTimer();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error ocurred while fetching and sharing clipboard data");
+            }
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
