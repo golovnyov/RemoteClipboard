@@ -17,11 +17,13 @@ namespace VH.RemoteClipboard
              Host.CreateDefaultBuilder(args)
                 .ConfigureServices((hostContext, services) =>
                 {
-                    services.AddHostedService<FetchClipboardDataHostedService>();
-                    services.AddHostedService<SetClipboardDataHostedService>();
+                    services.AddHostedService<LocalClipboardDataHostedService>();
+                    services.AddHostedService<RemoteClipboardDataHostedService>();
 
                     services.AddScoped<IShareClipboardService, AzureServiceBusShareClipboardService>();
                     services.AddScoped<IFetchClipboardService, AzureServiceBusFetchClipboardService>();
+
+                    services.AddSingleton<ILocalClipboardCurrent, LocalClipboardCurrent>();
 
                     services.InjectClipboard();
 

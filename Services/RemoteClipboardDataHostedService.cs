@@ -6,12 +6,12 @@ using Microsoft.Extensions.Logging;
 
 namespace VH.RemoteClipboard.Services
 {
-    public class SetClipboardDataHostedService : IHostedService
+    public class RemoteClipboardDataHostedService : IHostedService
     {
         private readonly ILogger logger;
         private readonly IFetchClipboardService fetchClipboardService;
 
-        public SetClipboardDataHostedService(ILogger<SetClipboardDataHostedService> logger, IFetchClipboardService fetchClipboardService)
+        public RemoteClipboardDataHostedService(ILogger<RemoteClipboardDataHostedService> logger, IFetchClipboardService fetchClipboardService)
         {
             this.logger = logger;
             this.fetchClipboardService = fetchClipboardService;
@@ -33,11 +33,15 @@ namespace VH.RemoteClipboard.Services
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            logger.LogDebug("Stopping application.");
+            logger.LogInformation("Stopping {remoteClipboardDataHostedService}...", nameof(RemoteClipboardDataHostedService));
 
             using ((IDisposable)fetchClipboardService)
             {
             }
+
+            await Task.CompletedTask;
+
+            logger.LogInformation("Stopped {localClipboardDataHostedService}.", nameof(LocalClipboardDataHostedService));
         }
     }
 }

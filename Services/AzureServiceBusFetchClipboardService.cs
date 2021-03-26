@@ -13,6 +13,7 @@ namespace VH.RemoteClipboard.Services
         private readonly ILogger logger;
         private readonly IClipboard clipboard;
         private readonly ServiceBusConfiguration serviceBusConfiguration;
+        private readonly ILocalClipboardCurrent localClipboardCurrent;
 
         private ServiceBusProcessor processor;
         private ServiceBusClient client;
@@ -20,11 +21,13 @@ namespace VH.RemoteClipboard.Services
         public AzureServiceBusFetchClipboardService(
             ILogger<AzureServiceBusFetchClipboardService> logger,
             IOptions<ServiceBusConfiguration> serviceBusOptions,
-            IClipboard clipboard)
+            IClipboard clipboard,
+            ILocalClipboardCurrent localClipboardCurrent)
         {
             this.logger = logger;
             serviceBusConfiguration = serviceBusOptions.Value;
             this.clipboard = clipboard;
+            this.localClipboardCurrent = localClipboardCurrent;
         }
 
         public async Task FetchClipboardDataAsync()
@@ -36,7 +39,9 @@ namespace VH.RemoteClipboard.Services
         {
             client = new ServiceBusClient(serviceBusConfiguration.ConnectionString);
 
-            processor = client.CreateProcessor(serviceBusConfiguration.QueueName, new ServiceBusProcessorOptions() { ReceiveMode = ServiceBusReceiveMode.PeekLock, AutoCompleteMessages = false });
+            var options = new ServiceBusProcessorOptions() { ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete };
+
+            processor = client.CreateProcessor(serviceBusConfiguration.TopicName, serviceBusConfiguration.SubscriptionName, options);
 
             // add handler to process messages
             processor.ProcessMessageAsync += ProcessMessageHandlerAsync;
@@ -56,9 +61,11 @@ namespace VH.RemoteClipboard.Services
 
             await clipboard.SetTextAsync(messageBody);
 
+            localClipboardCurrent.Value = messageBody;
+
             logger.LogDebug("Fetched message [{messageBody}]", messageBody);
 
-            logger.LogInformation("Local clipboard updated at [{dateTimeNowUtc}]", DateTime.UtcNow);
+            logger.LogInformation("Remote clipboard data fetched at [{dateTimeNowUtc}]", DateTime.UtcNow);
         }
 
         private Task ErrorHandler(ProcessErrorEventArgs args)

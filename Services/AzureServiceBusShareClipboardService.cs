@@ -20,11 +20,9 @@ namespace VH.RemoteClipboard.Services
 
         public async Task ShareClipboardDataAsync(string value)
         {
-            await ReceiveAndDeleteMessagesAsync();
-
             await SendMessageAsync(value);
 
-            logger.LogInformation("Current clipboard changes detected at [{dateTimeNowUtc}]", DateTime.UtcNow);
+            logger.LogInformation("Local clipboard data shared at [{dateTimeNowUtc}]", DateTime.UtcNow);
         }
 
         private async Task SendMessageAsync(string value)
@@ -34,35 +32,19 @@ namespace VH.RemoteClipboard.Services
                 throw new ArgumentNullException(nameof(value));
             }
 
-            logger.LogDebug($"Sending a single message to the queue: {serviceBusConfiguration.QueueName}");
+            logger.LogDebug($"Sending a single message to the topic: {serviceBusConfiguration.TopicName}");
 
             await using (ServiceBusClient client = new ServiceBusClient(serviceBusConfiguration.ConnectionString))
             {
-                ServiceBusSender sender = client.CreateSender(serviceBusConfiguration.QueueName);
+                ServiceBusSender sender = client.CreateSender(serviceBusConfiguration.TopicName);
 
                 ServiceBusMessage message = new ServiceBusMessage(value);
 
+                message.ApplicationProperties[nameof(ServiceBusMessage.To)] = serviceBusConfiguration.SubscriptionName;
+
                 await sender.SendMessageAsync(message);
 
-                logger.LogDebug($"Sent a single message to the queue: {serviceBusConfiguration.QueueName}");
-            }
-        }
-
-        private async Task ReceiveAndDeleteMessagesAsync()
-        {
-            logger.LogDebug($"Clearing the queue: {serviceBusConfiguration.QueueName}");
-
-            await using (ServiceBusClient client = new ServiceBusClient(serviceBusConfiguration.ConnectionString))
-            {
-                var receiver = client.CreateReceiver(serviceBusConfiguration.QueueName, new ServiceBusReceiverOptions() { ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete });
-
-                ServiceBusReceivedMessage msg = await receiver.ReceiveMessageAsync(TimeSpan.FromSeconds(1));
-
-                while (msg != null)
-                {
-                    logger.LogDebug("Receiving and deleting message");
-                    msg = await receiver.ReceiveMessageAsync(TimeSpan.FromSeconds(1));
-                }
+                logger.LogDebug($"Sent a single message to the topic: {serviceBusConfiguration.TopicName}");
             }
         }
     }
