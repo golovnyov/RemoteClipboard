@@ -27,7 +27,7 @@ namespace VH.RemoteClipboard.Services
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "An error ocurred while fetching and setting data in local clipboard");
+                logger.LogError(ex, "An error ocurred while processing remote clipboard.");
             }
         }
 

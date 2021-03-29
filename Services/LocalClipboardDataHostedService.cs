@@ -35,7 +35,7 @@ namespace VH.RemoteClipboard.Services
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "An error ocurred while fetching and sharing clipboard data");
+                logger.LogError(ex, "An error ocurred while processing local clipboard.");
             }
 
             await Task.CompletedTask;
