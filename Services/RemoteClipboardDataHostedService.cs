@@ -19,7 +19,7 @@ namespace VH.RemoteClipboard.Services
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            logger.LogDebug("Setting up fetching shared clipboard data");
+            logger.LogDebug("Setting up fetching shared clipboard data.");
 
             try
             {
@@ -34,10 +34,6 @@ namespace VH.RemoteClipboard.Services
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             logger.LogInformation("Stopping {remoteClipboardDataHostedService}...", nameof(RemoteClipboardDataHostedService));
-
-            using ((IDisposable)fetchClipboardService)
-            {
-            }
 
             await Task.CompletedTask;
 
