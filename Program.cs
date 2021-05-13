@@ -1,33 +1,48 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using TextCopy;
 using VH.RemoteClipboard.Configuration;
 using VH.RemoteClipboard.Services;
 
 namespace VH.RemoteClipboard
 {
-    class Program
+    static class Program
     {
+        /// <summary>
+        ///  The main entry point for the application.
+        /// </summary>
+        [STAThread]
         static void Main(string[] args)
         {
-            CreateHostBuilder(args).Build().Run();
+            SetApplicationDefaults();
+
+            var host = CreateHostBuilder(args).Build();
+
+            var mainForm = host.Services.GetRequiredService<MainForm>();
+
+            Application.Run(mainForm);
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
-             Host.CreateDefaultBuilder(args)
-                .ConfigureServices((hostContext, services) =>
-                {
-                    services.AddHostedService<LocalClipboardDataHostedService>();
-                    services.AddHostedService<RemoteClipboardDataHostedService>();
+            Host.CreateDefaultBuilder(args)
+               .ConfigureServices((hostContext, services) =>
+               {
+                   services.AddSingleton<MainForm>();
 
-                    services.AddScoped<IShareClipboardService, AzureServiceBusShareClipboardService>();
-                    services.AddScoped<IFetchClipboardService, AzureServiceBusFetchClipboardService>();
+                   services.AddScoped<IShareClipboardService, AzureServiceBusShareClipboardService>();
+                   services.AddScoped<IFetchClipboardService, AzureServiceBusFetchClipboardService>();
 
-                    services.AddSingleton<ILocalClipboardCurrent, LocalClipboardCurrent>();
+                   services.AddSingleton<IClipboardProvider, WinFormsClipboardProvider>();
 
-                    services.InjectClipboard();
+                   services.Configure<ServiceBusConfiguration>(hostContext.Configuration.GetSection(ServiceBusConfiguration.ServiceBusSectionName));
+               });
 
-                    services.Configure<ServiceBusConfiguration>(hostContext.Configuration.GetSection(ServiceBusConfiguration.ServiceBusSectionName));
-                });
+        private static void SetApplicationDefaults()
+        {
+            Application.SetHighDpiMode(HighDpiMode.SystemAware);
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+        }
     }
 }

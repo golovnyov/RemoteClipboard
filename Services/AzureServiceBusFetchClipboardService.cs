@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using TextCopy;
 using VH.RemoteClipboard.Configuration;
 
 namespace VH.RemoteClipboard.Services
@@ -11,9 +10,8 @@ namespace VH.RemoteClipboard.Services
     public class AzureServiceBusFetchClipboardService : IFetchClipboardService, IDisposable
     {
         private readonly ILogger logger;
-        private readonly IClipboard clipboard;
+        private readonly IClipboardProvider clipboard;
         private readonly ServiceBusConfiguration serviceBusConfiguration;
-        private readonly ILocalClipboardCurrent localClipboardCurrent;
 
         private ServiceBusProcessor processor;
         private ServiceBusClient client;
@@ -21,13 +19,11 @@ namespace VH.RemoteClipboard.Services
         public AzureServiceBusFetchClipboardService(
             ILogger<AzureServiceBusFetchClipboardService> logger,
             IOptions<ServiceBusConfiguration> serviceBusOptions,
-            IClipboard clipboard,
-            ILocalClipboardCurrent localClipboardCurrent)
+            IClipboardProvider clipboard)
         {
             this.logger = logger;
             serviceBusConfiguration = serviceBusOptions.Value;
             this.clipboard = clipboard;
-            this.localClipboardCurrent = localClipboardCurrent;
         }
 
         public async Task FetchClipboardDataAsync()
@@ -59,9 +55,7 @@ namespace VH.RemoteClipboard.Services
 
             string messageBody = processMessageEventArgs.Message.Body.ToString();
 
-            await clipboard.SetTextAsync(messageBody);
-
-            localClipboardCurrent.Value = messageBody;
+            await clipboard.SetValueAsync(messageBody);
 
             logger.LogDebug("Fetched message [{messageBody}]", messageBody);
 
@@ -85,7 +79,7 @@ namespace VH.RemoteClipboard.Services
             {
                 if (disposing)
                 {
-                    await processor.StopProcessingAsync();
+                    await processor?.StopProcessingAsync();
 
                     await processor.DisposeAsync();
 
