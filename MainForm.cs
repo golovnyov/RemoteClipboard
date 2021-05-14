@@ -34,7 +34,7 @@ namespace VH.RemoteClipboard
             {
                 notifyIcon1.Visible = true;
                 notifyIcon1.ShowBalloonTip(500);
-                
+
                 this.Hide();
             }
             else if (this.WindowState == FormWindowState.Normal)
@@ -65,23 +65,9 @@ namespace VH.RemoteClipboard
                 label4.Text = DateTime.UtcNow.ToString();
 
                 Clipboard.SetText(eventArgs.Text);
+
+                textBox1.Text = eventArgs.Text.Trim();
             }));
-        }
-
-        private async void button1_Click(object sender, EventArgs e)
-        {
-            var value = Clipboard.GetText();
-
-            if (string.IsNullOrWhiteSpace(value) || oldClipboardValue == value)
-            {
-                return;
-            }
-
-            oldClipboardValue = value;
-
-            textBox1.Text = value.Trim();
-
-            await localClipboardService.ShareClipboardDataAsync(value);
         }
 
         private void RunWatcherTimer()
@@ -93,7 +79,21 @@ namespace VH.RemoteClipboard
 
         private void HandleElapsedTimer(object sender, ElapsedEventArgs e)
         {
-            button1.BeginInvoke(new Action(() => { button1.PerformClick(); }));
+            label1.BeginInvoke(new Action(async () =>
+            {
+                var value = Clipboard.GetText();
+
+                if (string.IsNullOrWhiteSpace(value) || oldClipboardValue == value)
+                {
+                    return;
+                }
+
+                oldClipboardValue = value;
+
+                textBox1.Text = value.Trim();
+
+                await localClipboardService.ShareClipboardDataAsync(value);
+            }));
         }
     }
 }
