@@ -27,13 +27,9 @@ namespace VH.RemoteClipboard
 
         private void Form1_Resize(object sender, EventArgs e)
         {
-            notifyIcon1.BalloonTipTitle = "Minimize to Tray App";
-            notifyIcon1.BalloonTipText = "You have successfully minimized your form.";
-
             if (this.WindowState == FormWindowState.Minimized)
             {
                 notifyIcon1.Visible = true;
-                notifyIcon1.ShowBalloonTip(500);
 
                 this.Hide();
             }
