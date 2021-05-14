@@ -2,6 +2,7 @@ using System;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using VH.RemoteClipboard.Configuration;
 using VH.RemoteClipboard.Services;
 
@@ -21,7 +22,16 @@ namespace VH.RemoteClipboard
 
             var mainForm = host.Services.GetRequiredService<MainForm>();
 
-            Application.Run(mainForm);
+            var logger = host.Services.GetRequiredService<ILogger<MainForm>>();
+
+            try
+            {
+                Application.Run(mainForm);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An erorr occurred.");
+            }
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
@@ -30,10 +40,8 @@ namespace VH.RemoteClipboard
                {
                    services.AddSingleton<MainForm>();
 
-                   services.AddScoped<IShareClipboardService, AzureServiceBusShareClipboardService>();
-                   services.AddScoped<IFetchClipboardService, AzureServiceBusFetchClipboardService>();
-
-                   services.AddSingleton<IClipboardProvider, WinFormsClipboardProvider>();
+                   services.AddScoped<ILocalClipboardService, AzureServiceBusLocalClipboardService>();
+                   services.AddScoped<IRemoteClipboardService, AzureServiceBusRemoteClipboardService>();
 
                    services.Configure<ServiceBusConfiguration>(hostContext.Configuration.GetSection(ServiceBusConfiguration.ServiceBusSectionName));
                });

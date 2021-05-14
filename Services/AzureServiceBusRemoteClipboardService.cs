@@ -4,31 +4,34 @@ using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VH.RemoteClipboard.Configuration;
+using VH.RemoteClipboard.Events;
 
 namespace VH.RemoteClipboard.Services
 {
-    public class AzureServiceBusFetchClipboardService : IFetchClipboardService, IDisposable
+    public class AzureServiceBusRemoteClipboardService : IRemoteClipboardService, IDisposable
     {
         private readonly ILogger logger;
-        private readonly IClipboardProvider clipboard;
         private readonly ServiceBusConfiguration serviceBusConfiguration;
 
         private ServiceBusProcessor processor;
         private ServiceBusClient client;
 
-        public AzureServiceBusFetchClipboardService(
-            ILogger<AzureServiceBusFetchClipboardService> logger,
-            IOptions<ServiceBusConfiguration> serviceBusOptions,
-            IClipboardProvider clipboard)
+        public event ClipboardChangedEventHandler ClipboardChanged;
+
+        public AzureServiceBusRemoteClipboardService(ILogger<AzureServiceBusRemoteClipboardService> logger, IOptions<ServiceBusConfiguration> serviceBusOptions)
         {
             this.logger = logger;
             serviceBusConfiguration = serviceBusOptions.Value;
-            this.clipboard = clipboard;
         }
 
         public async Task FetchClipboardDataAsync()
         {
             await PeekMessageAsync();
+        }
+
+        protected virtual void OnClipboardChange(string value)
+        {
+            ClipboardChanged?.Invoke(this, new ClipboardChangedEventArgs(value));
         }
 
         private async Task PeekMessageAsync()
@@ -55,11 +58,13 @@ namespace VH.RemoteClipboard.Services
 
             string messageBody = processMessageEventArgs.Message.Body.ToString();
 
-            await clipboard.SetValueAsync(messageBody);
+            OnClipboardChange(messageBody);
 
             logger.LogDebug("Fetched message [{messageBody}]", messageBody);
 
             logger.LogInformation("Remote clipboard data fetched at [{dateTimeNowUtc}]", DateTime.UtcNow);
+
+            await Task.CompletedTask;
         }
 
         private Task ErrorHandler(ProcessErrorEventArgs args)

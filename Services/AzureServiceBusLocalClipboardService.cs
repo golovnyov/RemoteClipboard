@@ -7,12 +7,12 @@ using VH.RemoteClipboard.Configuration;
 
 namespace VH.RemoteClipboard.Services
 {
-    public class AzureServiceBusShareClipboardService : IShareClipboardService
+    public class AzureServiceBusLocalClipboardService : ILocalClipboardService
     {
         private readonly ILogger logger;
         private readonly ServiceBusConfiguration serviceBusConfiguration;
 
-        public AzureServiceBusShareClipboardService(ILogger<AzureServiceBusShareClipboardService> logger, IOptions<ServiceBusConfiguration> serviceBusOptions)
+        public AzureServiceBusLocalClipboardService(ILogger<AzureServiceBusLocalClipboardService> logger, IOptions<ServiceBusConfiguration> serviceBusOptions)
         {
             this.logger = logger;
             serviceBusConfiguration = serviceBusOptions.Value;
@@ -34,11 +34,11 @@ namespace VH.RemoteClipboard.Services
 
             logger.LogDebug($"Sending a single message to the topic: {serviceBusConfiguration.TopicName}");
 
-            await using (ServiceBusClient client = new ServiceBusClient(serviceBusConfiguration.ConnectionString))
+            await using (ServiceBusClient client = new(serviceBusConfiguration.ConnectionString))
             {
                 ServiceBusSender sender = client.CreateSender(serviceBusConfiguration.TopicName);
 
-                ServiceBusMessage message = new ServiceBusMessage(value);
+                ServiceBusMessage message = new(value);
 
                 message.ApplicationProperties[nameof(ServiceBusMessage.To)] = serviceBusConfiguration.SubscriptionName;
 

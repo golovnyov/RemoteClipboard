@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Timers;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
@@ -12,21 +11,15 @@ namespace VH.RemoteClipboard
         private string oldClipboardValue;
 
         private readonly ILogger logger;
-        private readonly IShareClipboardService shareClipboardService;
-        private readonly IFetchClipboardService fetchClipboardService;
-        private readonly IClipboardProvider clipboardProvider;
+        private readonly ILocalClipboardService localClipboardService;
+        private readonly IRemoteClipboardService remoteClipboardService;
         private readonly System.Timers.Timer timer;
 
-        public MainForm(
-            ILogger<MainForm> logger,
-            IClipboardProvider clipboardProvider,
-            IShareClipboardService shareClipboardService,
-            IFetchClipboardService fetchClipboardService)
+        public MainForm(ILogger<MainForm> logger, ILocalClipboardService shareClipboardService, IRemoteClipboardService fetchClipboardService)
         {
             this.logger = logger;
-            this.clipboardProvider = clipboardProvider;
-            this.shareClipboardService = shareClipboardService;
-            this.fetchClipboardService = fetchClipboardService;
+            this.localClipboardService = shareClipboardService;
+            this.remoteClipboardService = fetchClipboardService;
             this.timer = new();
 
             InitializeComponent();
@@ -41,6 +34,7 @@ namespace VH.RemoteClipboard
             {
                 notifyIcon1.Visible = true;
                 notifyIcon1.ShowBalloonTip(500);
+                
                 this.Hide();
             }
             else if (this.WindowState == FormWindowState.Normal)
@@ -59,14 +53,19 @@ namespace VH.RemoteClipboard
         {
             RunWatcherTimer();
 
-            clipboardProvider.ClipboardChanged += ClipboardProvider_ClipboardChanged;
+            remoteClipboardService.ClipboardChanged += ClipboardProvider_ClipboardChanged;
 
-            await fetchClipboardService.FetchClipboardDataAsync();
+            await remoteClipboardService.FetchClipboardDataAsync();
         }
 
         private void ClipboardProvider_ClipboardChanged(object sender, Events.ClipboardChangedEventArgs eventArgs)
         {
-            label4.BeginInvoke(new Action(() => { label4.Text = DateTime.UtcNow.ToString(); }));
+            label4.BeginInvoke(new Action(() =>
+            {
+                label4.Text = DateTime.UtcNow.ToString();
+
+                Clipboard.SetText(eventArgs.Text);
+            }));
         }
 
         private async void button1_Click(object sender, EventArgs e)
@@ -80,16 +79,9 @@ namespace VH.RemoteClipboard
 
             oldClipboardValue = value;
 
-            if (value.Length > 25)
-            {
-                label2.Text = $"{value.Substring(0, Math.Min(value.Length, 25))}...";
-            }
-            else
-            {
-                label2.Text = value;
-            }
+            textBox1.Text = value.Trim();
 
-            await shareClipboardService.ShareClipboardDataAsync(value);
+            await localClipboardService.ShareClipboardDataAsync(value);
         }
 
         private void RunWatcherTimer()
