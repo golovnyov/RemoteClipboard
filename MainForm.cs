@@ -60,6 +60,8 @@ namespace VH.RemoteClipboard
             {
                 label4.Text = DateTime.UtcNow.ToString();
 
+                oldClipboardValue = eventArgs.Text;
+
                 Clipboard.SetText(eventArgs.Text);
 
                 textBox1.Text = eventArgs.Text.Trim();
