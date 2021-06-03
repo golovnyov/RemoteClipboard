@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Drawing;
+using System.Linq;
 using System.Timers;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
@@ -8,7 +10,7 @@ namespace VH.RemoteClipboard
 {
     public partial class MainForm : Form
     {
-        private string oldClipboardValue;
+        private string[] clipboardValues;
 
         private readonly ILogger logger;
         private readonly ILocalClipboardService localClipboardService;
@@ -21,6 +23,8 @@ namespace VH.RemoteClipboard
             this.localClipboardService = shareClipboardService;
             this.remoteClipboardService = fetchClipboardService;
             this.timer = new();
+
+            clipboardValues = new string[5];
 
             InitializeComponent();
         }
@@ -60,11 +64,9 @@ namespace VH.RemoteClipboard
             {
                 label4.Text = DateTime.UtcNow.ToString();
 
-                oldClipboardValue = eventArgs.Text;
+                SetClipboardValue(eventArgs.Text);
 
                 Clipboard.SetText(eventArgs.Text);
-
-                textBox1.Text = eventArgs.Text.Trim();
             }));
         }
 
@@ -81,17 +83,57 @@ namespace VH.RemoteClipboard
             {
                 var value = Clipboard.GetText();
 
-                if (string.IsNullOrWhiteSpace(value) || oldClipboardValue == value)
+                if (string.IsNullOrWhiteSpace(value) || clipboardValues[0] == value)
                 {
                     return;
                 }
 
-                oldClipboardValue = value;
-
-                textBox1.Text = value.Trim();
+                SetClipboardValue(value);
 
                 await localClipboardService.ShareClipboardDataAsync(value);
             }));
+        }
+
+        private void SetClipboardValue(string value)
+        {
+            clipboardValues = new[] { value }.Concat(clipboardValues.Take(4).Distinct()).ToArray();
+
+            lbl_cpb_main_value.Text = PrepareClipboardText(clipboardValues[0]);
+
+            this.panel1.Controls.Clear();
+
+            if (clipboardValues.Count(x => !string.IsNullOrWhiteSpace(x)) == 1)
+            {
+                return;
+            }
+
+            for (int i = 1; i < clipboardValues.Count(x => !string.IsNullOrWhiteSpace(x)); i++)
+            {
+                this.panel1.Controls.Add(new Label() { Text = PrepareClipboardText(clipboardValues[i]), Location = new Point() { X = 5, Y = 30 * (i - 1) }, AutoSize = true });
+
+                var copyButton = new Button() { Text = "Copy", Location = new Point() { X = 395, Y = 30 * (i - 1) } };
+
+                int cls = i;
+
+                copyButton.Click += (s, ea) =>
+                {
+                    Clipboard.SetText(clipboardValues[cls]);
+                };
+
+                this.panel1.Controls.Add(copyButton);
+            }
+        }
+
+        private string PrepareClipboardText(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+
+            var trimmedValue = value.Trim();
+
+            return trimmedValue.Substring(0, Math.Min(trimmedValue.Length, 25));
         }
     }
 }
