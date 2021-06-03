@@ -96,7 +96,7 @@ namespace VH.RemoteClipboard
 
         private void SetClipboardValue(string value)
         {
-            clipboardValues = new[] { value }.Concat(clipboardValues.Take(4).Distinct()).ToArray();
+            clipboardValues = new[] { value }.Concat(clipboardValues.Take(4)).ToArray();
 
             lbl_cpb_main_value.Text = PrepareClipboardText(clipboardValues[0]);
 
