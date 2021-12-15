@@ -2,7 +2,7 @@
 
 namespace VH.RemoteClipboard.Services
 {
-    public interface IShareClipboardService
+    public interface ILocalClipboardService
     {
         Task ShareClipboardDataAsync(string value);
     }
