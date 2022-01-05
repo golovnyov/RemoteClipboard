@@ -1,44 +1,53 @@
-﻿using System;
-using System.Threading.Tasks;
-using Azure.Messaging.ServiceBus;
+﻿using Azure.Messaging.ServiceBus;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using TextCopy;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using VH.RemoteClipboard.Configuration;
+using VH.RemoteClipboard.Extensions;
+using VH.RemoteClipboard.Mediator;
 
 namespace VH.RemoteClipboard.Services
 {
-    public class AzureServiceBusFetchClipboardService : IFetchClipboardService, IDisposable
+    public class AzureServiceBusRemoteClipboardService : IHostedService, IDisposable
     {
         private readonly ILogger logger;
-        private readonly IClipboard clipboard;
         private readonly ServiceBusConfiguration serviceBusConfiguration;
-        private readonly ILocalClipboardCurrent localClipboardCurrent;
+        private readonly IMediator mediator;
 
         private ServiceBusProcessor processor;
-        private ServiceBusClient client;
+        private readonly ServiceBusClient client;
 
-        public AzureServiceBusFetchClipboardService(
-            ILogger<AzureServiceBusFetchClipboardService> logger,
+        public AzureServiceBusRemoteClipboardService(
+            ILogger<AzureServiceBusRemoteClipboardService> logger,
             IOptions<ServiceBusConfiguration> serviceBusOptions,
-            IClipboard clipboard,
-            ILocalClipboardCurrent localClipboardCurrent)
+            ServiceBusClient client,
+            IMediator mediator)
         {
             this.logger = logger;
-            serviceBusConfiguration = serviceBusOptions.Value;
-            this.clipboard = clipboard;
-            this.localClipboardCurrent = localClipboardCurrent;
+            this.serviceBusConfiguration = serviceBusOptions.Value;
+            this.client = client;
+            this.mediator = mediator;
         }
 
-        public async Task FetchClipboardDataAsync()
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
             await PeekMessageAsync();
         }
 
+        public async Task StopAsync(CancellationToken cancellationToken)
+        {
+        }
+
+        protected virtual void OnClipboardChange(string value)
+        {
+            mediator.NotifyWithText(this, value);
+        }
+
         private async Task PeekMessageAsync()
         {
-            client = new ServiceBusClient(serviceBusConfiguration.ConnectionString);
-
             var options = new ServiceBusProcessorOptions() { ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete };
 
             processor = client.CreateProcessor(serviceBusConfiguration.TopicName, serviceBusConfiguration.SubscriptionName, options);
@@ -59,13 +68,13 @@ namespace VH.RemoteClipboard.Services
 
             string messageBody = processMessageEventArgs.Message.Body.ToString();
 
-            await clipboard.SetTextAsync(messageBody);
-
-            localClipboardCurrent.Value = messageBody;
+            OnClipboardChange(messageBody);
 
             logger.LogDebug("Fetched message [{messageBody}]", messageBody);
 
             logger.LogInformation("Remote clipboard data fetched at [{dateTimeNowUtc}]", DateTime.UtcNow);
+
+            await Task.CompletedTask;
         }
 
         private Task ErrorHandler(ProcessErrorEventArgs args)
@@ -85,7 +94,7 @@ namespace VH.RemoteClipboard.Services
             {
                 if (disposing)
                 {
-                    await processor.StopProcessingAsync();
+                    await processor?.StopProcessingAsync();
 
                     await processor.DisposeAsync();
 

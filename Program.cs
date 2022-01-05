@@ -1,33 +1,75 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Azure;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using TextCopy;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Windows.Forms;
 using VH.RemoteClipboard.Configuration;
+using VH.RemoteClipboard.Mediator;
 using VH.RemoteClipboard.Services;
 
 namespace VH.RemoteClipboard
 {
-    class Program
+    static class Program
     {
+        /// <summary>
+        ///  The main entry point for the application.
+        /// </summary>
+        [STAThread]
         static void Main(string[] args)
         {
-            CreateHostBuilder(args).Build().Run();
+            SetApplicationDefaults();
+
+            var host = CreateHostBuilder(args).Build();
+
+            var mainForm = host.Services.GetRequiredService<MainForm>();
+
+            var logger = host.Services.GetRequiredService<ILogger<MainForm>>();
+
+            try
+            {
+               var hostRunTask = host.RunAsync();
+
+                Application.Run(mainForm);
+
+                hostRunTask.Wait();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An erorr occurred.");
+            }
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
-             Host.CreateDefaultBuilder(args)
-                .ConfigureServices((hostContext, services) =>
-                {
-                    services.AddHostedService<LocalClipboardDataHostedService>();
-                    services.AddHostedService<RemoteClipboardDataHostedService>();
+            Host.CreateDefaultBuilder(args)
+               .ConfigureServices((hostContext, services) =>
+               {
+                   services.AddSingleton<MainForm>();
+                   services.AddSingleton<IMediator, ClipboardMediator>();
 
-                    services.AddScoped<IShareClipboardService, AzureServiceBusShareClipboardService>();
-                    services.AddScoped<IFetchClipboardService, AzureServiceBusFetchClipboardService>();
+                   services.AddHostedService<AzureServiceBusLocalClipboardService>();
+                   services.AddHostedService<AzureServiceBusRemoteClipboardService>();
 
-                    services.AddSingleton<ILocalClipboardCurrent, LocalClipboardCurrent>();
+                   services.Configure<ServiceBusConfiguration>(hostContext.Configuration.GetSection(ServiceBusConfiguration.ServiceBusSectionName));
 
-                    services.InjectClipboard();
+                   services.AddAzureClients(cb =>
+                   {
+                       cb
+                       .AddServiceBusClient(hostContext.Configuration["ServiceBus:ConnectionString"])
+                       .ConfigureOptions(options =>
+                       {
+                           options.RetryOptions.Delay = TimeSpan.FromMilliseconds(50);
+                           options.RetryOptions.MaxDelay = TimeSpan.FromSeconds(5);
+                           options.RetryOptions.MaxRetries = 3;
+                       });
+                   });
+               });
 
-                    services.Configure<ServiceBusConfiguration>(hostContext.Configuration.GetSection(ServiceBusConfiguration.ServiceBusSectionName));
-                });
+        private static void SetApplicationDefaults()
+        {
+            Application.SetHighDpiMode(HighDpiMode.SystemAware);
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+        }
     }
 }
