@@ -27,7 +27,7 @@ namespace VH.RemoteClipboard.Models
 
         public override bool Equals(Object obj)
         {
-            return base.Equals(obj) || Equals(this, obj as ClipboardValue);
+            return Equals(this, obj as ClipboardValue);
         }
 
         public override int GetHashCode()
@@ -52,7 +52,7 @@ namespace VH.RemoteClipboard.Models
                 return false;
             }
 
-            return string.Equals(obj1.GetText(), obj2.GetText(), StringComparison.Ordinal);
+            return ReferenceEquals(obj1, obj2) || string.Equals(obj1.GetText(), obj2.GetText(), StringComparison.Ordinal);
         }
     }
 }

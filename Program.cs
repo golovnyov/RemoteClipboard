@@ -47,14 +47,14 @@ namespace VH.RemoteClipboard
                    services.AddSingleton<MainForm>();
                    services.AddSingleton<IMediator, ClipboardMediator>();
 
-                   services.AddHostedService<AzureServiceBusLocalClipboardService>();
+                   services.AddSingleton<AzureServiceBusLocalClipboardService>();
                    services.AddHostedService<AzureServiceBusRemoteClipboardService>();
 
                    services.Configure<ServiceBusConfiguration>(hostContext.Configuration.GetSection(ServiceBusConfiguration.ServiceBusSectionName));
 
-                   services.AddAzureClients(cb =>
+                   services.AddAzureClients(cfb =>
                    {
-                       cb
+                       cfb
                        .AddServiceBusClient(hostContext.Configuration["ServiceBus:ConnectionString"])
                        .ConfigureOptions(options =>
                        {

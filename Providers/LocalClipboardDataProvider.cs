@@ -1,7 +1,9 @@
 ﻿using Azure.Messaging.ServiceBus;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using VH.RemoteClipboard.Configuration;
 using VH.RemoteClipboard.Mediator;
@@ -9,23 +11,30 @@ using VH.RemoteClipboard.Models;
 
 namespace VH.RemoteClipboard.Services
 {
-    public class AzureServiceBusLocalClipboardService : IPublishClipboardService
+    public class LocalClipboardDataProvider : IHostedService
     {
         private readonly ILogger logger;
         private readonly IMediator mediator;
+
+        private readonly System.Timers.Timer timer;
+
         private readonly ServiceBusConfiguration serviceBusConfiguration;
         private readonly ServiceBusSender sender;
 
-        public AzureServiceBusLocalClipboardService(
-            ILogger<AzureServiceBusLocalClipboardService> logger,
-            IOptions<ServiceBusConfiguration> serviceBusOptions,
-            ServiceBusClient serviceBusClient,
-            IMediator mediator)
+        public LocalClipboardDataProvider(ILogger<AzureServiceBusLocalClipboardService> logger, IMediator mediator)
         {
             this.logger = logger;
-            this.serviceBusConfiguration = serviceBusOptions.Value;
-            this.sender = serviceBusClient.CreateSender(serviceBusConfiguration.TopicName);
             this.mediator = mediator;
+        }
+
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
         }
 
         public async void PublishClipboardValue(ClipboardValue clipboardValue)

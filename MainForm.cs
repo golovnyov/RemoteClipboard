@@ -107,12 +107,11 @@ namespace VH.RemoteClipboard
             }
         }
 
-
         private Label CreateLabel(string text, int y_position)
         {
             var labelDynamic = new Label()
             {
-                Text = PrepareClipboardText(text),
+                Text = text.PrepareClipboardText(),
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = Color.White,
                 Location = new Point() { X = 5, Y = 50 * y_position },
@@ -127,7 +126,7 @@ namespace VH.RemoteClipboard
             labelDynamic.MouseLeave += LabelDynamic_MouseLeave;
 
             return labelDynamic;
-        }   
+        }
 
         private void LabelDynamic_MouseLeave(object sender, EventArgs e)
         {
@@ -148,13 +147,6 @@ namespace VH.RemoteClipboard
             var eventSender = sender as Label;
 
             mediator.NotifyWithText(this, eventSender.Text);
-        }
-
-        private static string PrepareClipboardText(string value)
-        {
-            var trimmedValue = value?.Trim();
-
-            return trimmedValue?.Substring(0, Math.Min(trimmedValue.Length, 25));
         }
     }
 }
