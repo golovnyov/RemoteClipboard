@@ -36,7 +36,7 @@ namespace VH.RemoteClipboard
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "An erorr occurred.");
+                logger.LogError(ex, "An error occurred.");
             }
         }
 
@@ -48,7 +48,7 @@ namespace VH.RemoteClipboard
                    services.AddSingleton<IMediator, ClipboardMediator>();
 
                    services.AddSingleton<AzureServiceBusLocalClipboardService>();
-                   services.AddHostedService<AzureServiceBusRemoteClipboardService>();
+                   services.AddSingleton<AzureServiceBusRemoteClipboardService>();
 
                    services.Configure<ServiceBusConfiguration>(hostContext.Configuration.GetSection(ServiceBusConfiguration.ServiceBusSectionName));
 

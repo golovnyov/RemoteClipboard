@@ -39,6 +39,7 @@ namespace VH.RemoteClipboard.Services
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
+            await Task.CompletedTask;
         }
 
         protected virtual void OnClipboardChange(string value)
