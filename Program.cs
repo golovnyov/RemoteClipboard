@@ -47,8 +47,8 @@ namespace VH.RemoteClipboard
                    services.AddSingleton<MainForm>();
                    services.AddSingleton<IMediator, ClipboardMediator>();
 
-                   services.AddSingleton<AzureServiceBusLocalClipboardService>();
-                   services.AddSingleton<AzureServiceBusRemoteClipboardService>();
+                   services.AddHostedService<AzureServiceBusLocalClipboardService>();
+                   services.AddHostedService<AzureServiceBusRemoteClipboardService>();
 
                    services.Configure<ServiceBusConfiguration>(hostContext.Configuration.GetSection(ServiceBusConfiguration.ServiceBusSectionName));
 
