@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using VH.RemoteClipboard.Extensions;
 using VH.RemoteClipboard.Mediator;
+using VH.RemoteClipboard.Models;
 
 namespace VH.RemoteClipboard
 {
@@ -15,7 +16,7 @@ namespace VH.RemoteClipboard
 
         private readonly IMediator mediator;
 
-        private DateTime dateTimeWM_DRAWCLIPBOARDRaising = DateTime.Now;
+        private DateTime? dateTimeWM_DRAWCLIPBOARDRaising;
 
         public MainForm(IMediator mediator)
         {
@@ -30,14 +31,12 @@ namespace VH.RemoteClipboard
         {
             switch ((Win32.Msgs)m.Msg)
             {
-                //
-                // The WM_DRAWCLIPBOARD message is sent to the first window 
-                // in the clipboard viewer chain when the content of the 
-                // clipboard changes. This enables a clipboard viewer 
-                // window to display the new content of the clipboard. 
-                //
+                // The WM_DRAWCLIPBOARD message is sent to the first window
+                // in the clipboard viewer chain when the content of the
+                // clipboard changes. This enables a clipboard viewer
+                // window to display the new content of the clipboard.
                 case Win32.Msgs.WM_DRAWCLIPBOARD:
-                    if (DateTime.Now.Subtract(dateTimeWM_DRAWCLIPBOARDRaising).TotalSeconds < 3)
+                    if (dateTimeWM_DRAWCLIPBOARDRaising.HasValue && DateTime.Now.Subtract(dateTimeWM_DRAWCLIPBOARDRaising.Value).TotalSeconds < 3)
                     {
                         return;
                     }
@@ -45,8 +44,8 @@ namespace VH.RemoteClipboard
                     ProcessClipboardData();
 
                     //
-                    // Each window that receives the WM_DRAWCLIPBOARD message 
-                    // must call the SendMessage function to pass the message 
+                    // Each window that receives the WM_DRAWCLIPBOARD message
+                    // must call the SendMessage function to pass the message
                     // on to the next window in the clipboard viewer chain.
                     //
                     Win32.User32.SendMessage(_ClipboardViewerNext, m.Msg, m.WParam, m.LParam);
@@ -55,24 +54,22 @@ namespace VH.RemoteClipboard
                     break;
 
                 case Win32.Msgs.WM_CHANGECBCHAIN:
-                    // When a clipboard viewer window receives the WM_CHANGECBCHAIN message, 
-                    // it should call the SendMessage function to pass the message to the 
-                    // next window in the chain, unless the next window is the window 
-                    // being removed. In this case, the clipboard viewer should save 
-                    // the handle specified by the lParam parameter as the next window in the chain. 
+                    // When a clipboard viewer window receives the WM_CHANGECBCHAIN message,
+                    // it should call the SendMessage function to pass the message to the
+                    // next window in the chain, unless the next window is the window
+                    // being removed. In this case, the clipboard viewer should save
+                    // the handle specified by the lParam parameter as the next window in the chain.
 
-                    //
-                    // wParam is the Handle to the window being removed from 
-                    // the clipboard viewer chain 
-                    // lParam is the Handle to the next window in the chain 
-                    // following the window being removed. 
+                    // wParam is the Handle to the window being removed from
+                    // the clipboard viewer chain
+                    // lParam is the Handle to the next window in the chain
+                    // following the window being removed.
                     if (m.WParam == _ClipboardViewerNext)
                     {
-                        //
                         // If wParam is the next clipboard viewer then it
                         // is being removed so update pointer to the next
                         // window in the clipboard chain
-                        //
+
                         _ClipboardViewerNext = m.LParam;
                     }
                     else
@@ -113,7 +110,7 @@ namespace VH.RemoteClipboard
 
         private void MainForm_Load(object sender, EventArgs e)
         {
-            mediator.ClipboardChanged += ClipboardProvider_ClipboardChanged;
+            mediator.RemoteClipboardChanged += ClipboardProvider_ClipboardChanged;
 
             RegisterClipboardViewer();
         }
@@ -125,11 +122,6 @@ namespace VH.RemoteClipboard
 
         private void ClipboardProvider_ClipboardChanged(object sender, Events.ClipboardChangedEventArgs eventArgs)
         {
-            if (sender == this)
-            {
-                return;
-            }
-
             label4.BeginInvoke(new Action(() =>
             {
                 label4.Text = DateTime.UtcNow.ToString();
@@ -213,7 +205,11 @@ namespace VH.RemoteClipboard
 
             RefreshUi(clipboardText);
 
-            mediator.NotifyWithText(this, clipboardText);
+            var cpbValue = new ClipboardValue();
+
+            cpbValue.SetText(clipboardText);
+
+            mediator.NotifyLocalClipboardChanged(this, cpbValue);
         }
 
         /// <summary>

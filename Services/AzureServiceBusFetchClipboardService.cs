@@ -6,8 +6,8 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using VH.RemoteClipboard.Configuration;
-using VH.RemoteClipboard.Extensions;
 using VH.RemoteClipboard.Mediator;
+using VH.RemoteClipboard.Models;
 
 namespace VH.RemoteClipboard.Services
 {
@@ -44,7 +44,11 @@ namespace VH.RemoteClipboard.Services
 
         protected virtual void OnClipboardChange(string value)
         {
-            mediator.NotifyWithText(this, value);
+            var cpbValue = new ClipboardValue();
+
+            cpbValue.SetText(value);
+
+            mediator.NotifyRemoteClipboardChanged(this, cpbValue);
         }
 
         private async Task PeekMessageAsync()
@@ -65,22 +69,16 @@ namespace VH.RemoteClipboard.Services
 
         private async Task ProcessMessageHandlerAsync(ProcessMessageEventArgs processMessageEventArgs)
         {
-            logger.LogDebug("Processing message");
-
             string messageBody = processMessageEventArgs.Message.Body.ToString();
 
             OnClipboardChange(messageBody);
-
-            logger.LogDebug("Fetched message [{messageBody}]", messageBody);
-
-            logger.LogInformation("Remote clipboard data fetched at [{dateTimeNowUtc}]", DateTime.UtcNow);
 
             await Task.CompletedTask;
         }
 
         private Task ErrorHandler(ProcessErrorEventArgs args)
         {
-            logger.LogError(args.Exception, "An error ocurred while processing message");
+            logger.LogCritical(args.Exception, "An error ocurred while processing message");
 
             return Task.CompletedTask;
         }
