@@ -11,7 +11,14 @@ public class ClipboardMediator : IMediator
 
     public void NotifyLocalClipboardChanged(object sender, ClipboardValue value)
     {
-        if (previousValue is null || previousValue == value)
+        if (previousValue is null)
+        {
+            previousValue = value;
+
+            return;
+        }
+        
+        if (previousValue == value)
         {
             return;
         }
