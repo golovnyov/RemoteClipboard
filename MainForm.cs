@@ -110,7 +110,7 @@ namespace VH.RemoteClipboard
 
         private void MainForm_Load(object sender, EventArgs e)
         {
-            mediator.RemoteClipboardChanged += ClipboardProvider_ClipboardChanged;
+            mediator.ClipboardChanged += ClipboardProvider_ClipboardChanged;
 
             RegisterClipboardViewer();
         }
@@ -122,6 +122,11 @@ namespace VH.RemoteClipboard
 
         private void ClipboardProvider_ClipboardChanged(object sender, Events.ClipboardChangedEventArgs eventArgs)
         {
+            if (eventArgs is null)
+            {
+                throw new ArgumentNullException(nameof(eventArgs));
+            }
+
             label4.BeginInvoke(new Action(() =>
             {
                 label4.Text = DateTime.UtcNow.ToString();
@@ -198,7 +203,7 @@ namespace VH.RemoteClipboard
         {
             string clipboardText = Clipboard.GetText();
 
-            if (string.IsNullOrWhiteSpace(clipboardText))
+            if (string.IsNullOrWhiteSpace(clipboardText) || clipboardValues.TryPeek(out string stackValue) && string.Equals(stackValue, clipboardText, StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }

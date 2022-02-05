@@ -5,16 +5,29 @@ namespace VH.RemoteClipboard.Mediator;
 
 public class ClipboardMediator : IMediator
 {
-    public event ClipboardChangedEventHandler LocalClipboardChanged;
-    public event ClipboardChangedEventHandler RemoteClipboardChanged;
+    private ClipboardValue previousValue;
+
+    public event ClipboardChangedEventHandler ClipboardChanged;
 
     public void NotifyLocalClipboardChanged(object sender, ClipboardValue value)
     {
-        LocalClipboardChanged?.Invoke(sender, new ClipboardChangedEventArgs(value));
+        if (previousValue is null || previousValue == value)
+        {
+            return;
+        }
+
+        InvokeEvent(sender, value);
     }
-    
+
     public void NotifyRemoteClipboardChanged(object sender, ClipboardValue value)
     {
-        RemoteClipboardChanged?.Invoke(sender, new ClipboardChangedEventArgs(value));
+        InvokeEvent(sender, value);
+    }
+
+    private void InvokeEvent(object sender, ClipboardValue value)
+    {
+        previousValue = value;
+
+        ClipboardChanged?.Invoke(sender, new ClipboardChangedEventArgs(value));
     }
 }
