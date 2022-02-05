@@ -203,7 +203,7 @@ namespace VH.RemoteClipboard
         {
             string clipboardText = Clipboard.GetText();
 
-            if (string.IsNullOrWhiteSpace(clipboardText) || clipboardValues.TryPeek(out string stackValue) && string.Equals(stackValue, clipboardText, StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrWhiteSpace(clipboardText) || (clipboardValues.TryPeek(out string stackValue) && string.Equals(stackValue, clipboardText, StringComparison.OrdinalIgnoreCase)))
             {
                 return;
             }
