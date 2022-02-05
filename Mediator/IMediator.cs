@@ -5,7 +5,9 @@ namespace VH.RemoteClipboard.Mediator;
 
 public interface IMediator
 {
-    event ClipboardChangedEventHandler ClipboardChanged;
+    event ClipboardChangedEventHandler LocalClipboardChanged;
+
+    event ClipboardChangedEventHandler RemoteClipboardChanged;
 
     void NotifyLocalClipboardChanged(object sender, ClipboardValue value);
 

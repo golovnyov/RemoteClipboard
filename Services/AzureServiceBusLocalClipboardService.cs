@@ -25,7 +25,7 @@ namespace VH.RemoteClipboard.Services
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            mediator.ClipboardChanged += Mediator_ClipboardChanged;
+            mediator.LocalClipboardChanged += Mediator_ClipboardChanged;
 
             await Task.CompletedTask;
         }

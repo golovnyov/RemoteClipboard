@@ -110,7 +110,7 @@ namespace VH.RemoteClipboard
 
         private void MainForm_Load(object sender, EventArgs e)
         {
-            mediator.ClipboardChanged += ClipboardProvider_ClipboardChanged;
+            mediator.RemoteClipboardChanged += ClipboardProvider_ClipboardChanged;
 
             RegisterClipboardViewer();
         }
