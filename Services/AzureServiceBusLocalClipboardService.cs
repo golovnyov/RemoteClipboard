@@ -54,7 +54,7 @@ namespace VH.RemoteClipboard.Services
         {
             ServiceBusMessage message = new(value);
 
-            message.ApplicationProperties[nameof(ServiceBusMessage.To)] = serviceBusConfiguration.SubscriptionName;
+            message.ApplicationProperties["From"] = serviceBusConfiguration.SubscriptionName;
 
             await sender.SendMessageAsync(message);
         }
