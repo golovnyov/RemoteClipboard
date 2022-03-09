@@ -1,9 +1,11 @@
-using System;
-using System.Windows.Forms;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Windows.Forms;
 using VH.RemoteClipboard.Configuration;
+using VH.RemoteClipboard.Mediator;
 using VH.RemoteClipboard.Services;
 
 namespace VH.RemoteClipboard
@@ -26,11 +28,15 @@ namespace VH.RemoteClipboard
 
             try
             {
+               var hostRunTask = host.RunAsync();
+
                 Application.Run(mainForm);
+
+                hostRunTask.Wait();
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "An erorr occurred.");
+                logger.LogError(ex, "An error occurred.");
             }
         }
 
@@ -39,11 +45,24 @@ namespace VH.RemoteClipboard
                .ConfigureServices((hostContext, services) =>
                {
                    services.AddSingleton<MainForm>();
+                   services.AddSingleton<IMediator, ClipboardMediator>();
 
-                   services.AddScoped<ILocalClipboardService, AzureServiceBusLocalClipboardService>();
-                   services.AddScoped<IRemoteClipboardService, AzureServiceBusRemoteClipboardService>();
+                   services.AddHostedService<AzureServiceBusLocalClipboardService>();
+                   services.AddHostedService<AzureServiceBusRemoteClipboardService>();
 
                    services.Configure<ServiceBusConfiguration>(hostContext.Configuration.GetSection(ServiceBusConfiguration.ServiceBusSectionName));
+
+                   services.AddAzureClients(cfb =>
+                   {
+                       cfb
+                       .AddServiceBusClient(hostContext.Configuration["ServiceBus:ConnectionString"])
+                       .ConfigureOptions(options =>
+                       {
+                           options.RetryOptions.Delay = TimeSpan.FromMilliseconds(50);
+                           options.RetryOptions.MaxDelay = TimeSpan.FromSeconds(5);
+                           options.RetryOptions.MaxRetries = 3;
+                       });
+                   });
                });
 
         private static void SetApplicationDefaults()

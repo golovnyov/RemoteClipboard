@@ -1,13 +1,15 @@
-﻿namespace VH.RemoteClipboard.Events
+﻿using VH.RemoteClipboard.Models;
+
+namespace VH.RemoteClipboard.Events
 {
     public class ClipboardChangedEventArgs
     {
-        public ClipboardChangedEventArgs(string value)
+        public ClipboardChangedEventArgs(ClipboardValue value)
         {
-            Text = value;
+            ClipboardValue = value;
         }
 
-        public string Text { get; private set; }
+        public ClipboardValue ClipboardValue { get; private set; }
     }
 
     public delegate void ClipboardChangedEventHandler(object sender, ClipboardChangedEventArgs eventArgs);

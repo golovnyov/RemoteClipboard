@@ -1,32 +1,91 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
-using System.Timers;
 using System.Windows.Forms;
-using Microsoft.Extensions.Logging;
-using VH.RemoteClipboard.Services;
+using VH.RemoteClipboard.Extensions;
+using VH.RemoteClipboard.Mediator;
+using VH.RemoteClipboard.Models;
 
 namespace VH.RemoteClipboard
 {
     public partial class MainForm : Form
     {
-        private string[] clipboardValues;
+        IntPtr _ClipboardViewerNext;
 
-        private readonly ILogger logger;
-        private readonly ILocalClipboardService localClipboardService;
-        private readonly IRemoteClipboardService remoteClipboardService;
-        private readonly System.Timers.Timer timer;
+        private Stack<string> clipboardValues;
 
-        public MainForm(ILogger<MainForm> logger, ILocalClipboardService shareClipboardService, IRemoteClipboardService fetchClipboardService)
+        private readonly IMediator mediator;
+
+        private DateTime? dateTimeWM_DRAWCLIPBOARDRaising;
+
+        public MainForm(IMediator mediator)
         {
-            this.logger = logger;
-            this.localClipboardService = shareClipboardService;
-            this.remoteClipboardService = fetchClipboardService;
-            this.timer = new();
+            this.mediator = mediator;
 
-            clipboardValues = new string[5];
+            clipboardValues = new Stack<string>(5);
 
             InitializeComponent();
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            switch ((Win32.Msgs)m.Msg)
+            {
+                // The WM_DRAWCLIPBOARD message is sent to the first window
+                // in the clipboard viewer chain when the content of the
+                // clipboard changes. This enables a clipboard viewer
+                // window to display the new content of the clipboard.
+                case Win32.Msgs.WM_DRAWCLIPBOARD:
+                    if (dateTimeWM_DRAWCLIPBOARDRaising.HasValue && DateTime.Now.Subtract(dateTimeWM_DRAWCLIPBOARDRaising.Value).TotalSeconds < 3)
+                    {
+                        return;
+                    }
+
+                    ProcessClipboardData();
+
+                    //
+                    // Each window that receives the WM_DRAWCLIPBOARD message
+                    // must call the SendMessage function to pass the message
+                    // on to the next window in the clipboard viewer chain.
+                    //
+                    Win32.User32.SendMessage(_ClipboardViewerNext, m.Msg, m.WParam, m.LParam);
+
+                    dateTimeWM_DRAWCLIPBOARDRaising = DateTime.Now;
+                    break;
+
+                case Win32.Msgs.WM_CHANGECBCHAIN:
+                    // When a clipboard viewer window receives the WM_CHANGECBCHAIN message,
+                    // it should call the SendMessage function to pass the message to the
+                    // next window in the chain, unless the next window is the window
+                    // being removed. In this case, the clipboard viewer should save
+                    // the handle specified by the lParam parameter as the next window in the chain.
+
+                    // wParam is the Handle to the window being removed from
+                    // the clipboard viewer chain
+                    // lParam is the Handle to the next window in the chain
+                    // following the window being removed.
+                    if (m.WParam == _ClipboardViewerNext)
+                    {
+                        // If wParam is the next clipboard viewer then it
+                        // is being removed so update pointer to the next
+                        // window in the clipboard chain
+
+                        _ClipboardViewerNext = m.LParam;
+                    }
+                    else
+                    {
+                        Win32.User32.SendMessage(_ClipboardViewerNext, m.Msg, m.WParam, m.LParam);
+                    }
+                    break;
+
+                default:
+                    //
+                    // Let the form process the messages that we are
+                    // not interested in
+                    //
+                    base.WndProc(ref m);
+                    break;
+            }
         }
 
         private void Form1_Resize(object sender, EventArgs e)
@@ -49,91 +108,129 @@ namespace VH.RemoteClipboard
             this.WindowState = FormWindowState.Normal;
         }
 
-        private async void MainForm_Load(object sender, EventArgs e)
+        private void MainForm_Load(object sender, EventArgs e)
         {
-            RunWatcherTimer();
+            mediator.RemoteClipboardChanged += ClipboardProvider_ClipboardChanged;
 
-            remoteClipboardService.ClipboardChanged += ClipboardProvider_ClipboardChanged;
+            RegisterClipboardViewer();
+        }
 
-            await remoteClipboardService.FetchClipboardDataAsync();
+        private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            UnregisterClipboardViewer();
         }
 
         private void ClipboardProvider_ClipboardChanged(object sender, Events.ClipboardChangedEventArgs eventArgs)
         {
+            if (eventArgs is null)
+            {
+                throw new ArgumentNullException(nameof(eventArgs));
+            }
+
             label4.BeginInvoke(new Action(() =>
             {
                 label4.Text = DateTime.UtcNow.ToString();
 
-                SetClipboardValue(eventArgs.Text);
-
-                Clipboard.SetText(eventArgs.Text);
+                Clipboard.SetText(eventArgs.ClipboardValue.GetText());
             }));
         }
 
-        private void RunWatcherTimer()
+        private void RefreshUi(string value)
         {
-            timer.Elapsed += new ElapsedEventHandler(HandleElapsedTimer);
-            timer.Interval = 5000;
-            timer.Enabled = true;
-        }
-
-        private void HandleElapsedTimer(object sender, ElapsedEventArgs e)
-        {
-            label1.BeginInvoke(new Action(async () =>
-            {
-                var value = Clipboard.GetText();
-
-                if (string.IsNullOrWhiteSpace(value) || clipboardValues[0] == value)
-                {
-                    return;
-                }
-
-                SetClipboardValue(value);
-
-                await localClipboardService.ShareClipboardDataAsync(value);
-            }));
-        }
-
-        private void SetClipboardValue(string value)
-        {
-            clipboardValues = new[] { value }.Concat(clipboardValues.Take(4)).ToArray();
-
-            lbl_cpb_main_value.Text = PrepareClipboardText(clipboardValues[0]);
+            clipboardValues.Push(value);
 
             this.panel1.Controls.Clear();
 
-            if (clipboardValues.Count(x => !string.IsNullOrWhiteSpace(x)) == 1)
+            int y_position = 0;
+
+            foreach (var clipboardValue in clipboardValues)
+            {
+                var labelDynamic = CreateLabel(clipboardValue, y_position);
+
+                this.panel1.Controls.Add(labelDynamic);
+
+                y_position++;
+            }
+        }
+
+        private Label CreateLabel(string text, int y_position)
+        {
+            var labelDynamic = new Label()
+            {
+                Text = text.PrepareClipboardText(),
+                TextAlign = ContentAlignment.MiddleLeft,
+                BackColor = Color.White,
+                Location = new Point() { X = 5, Y = 50 * y_position },
+                Width = 460,
+                Height = 40
+            };
+
+            this.panel1.Controls.Add(labelDynamic);
+
+            labelDynamic.Click += LabelDynamic_Click;
+            labelDynamic.MouseHover += LabelDynamic_MouseHover;
+            labelDynamic.MouseLeave += LabelDynamic_MouseLeave;
+
+            return labelDynamic;
+        }
+
+        private void LabelDynamic_MouseLeave(object sender, EventArgs e)
+        {
+            var eventSender = sender as Label;
+
+            eventSender.BackColor = Color.FromKnownColor(KnownColor.White);
+        }
+
+        private void LabelDynamic_MouseHover(object sender, EventArgs e)
+        {
+            var eventSender = sender as Label;
+
+            eventSender.BackColor = Color.FromKnownColor(KnownColor.Control);
+        }
+
+        private void LabelDynamic_Click(object sender, EventArgs e)
+        {
+            var eventSender = sender as Label;
+
+            Clipboard.SetText(eventSender.Text);
+        }
+
+        /// <summary>
+        /// Show the clipboard contents in the window 
+        /// and show the notification balloon if a link is found
+        /// </summary>
+        private void ProcessClipboardData()
+        {
+            string clipboardText = Clipboard.GetText();
+
+            if (string.IsNullOrWhiteSpace(clipboardText) || (clipboardValues.TryPeek(out string stackValue) && string.Equals(stackValue, clipboardText, StringComparison.OrdinalIgnoreCase)))
             {
                 return;
             }
 
-            for (int i = 1; i < clipboardValues.Count(x => !string.IsNullOrWhiteSpace(x)); i++)
-            {
-                this.panel1.Controls.Add(new Label() { Text = PrepareClipboardText(clipboardValues[i]), Location = new Point() { X = 5, Y = 30 * (i - 1) }, AutoSize = true });
+            RefreshUi(clipboardText);
 
-                var copyButton = new Button() { Text = "Copy", Location = new Point() { X = 395, Y = 30 * (i - 1) } };
+            var cpbValue = new ClipboardValue();
 
-                int cls = i;
+            cpbValue.SetText(clipboardText);
 
-                copyButton.Click += (s, ea) =>
-                {
-                    Clipboard.SetText(clipboardValues[cls]);
-                };
-
-                this.panel1.Controls.Add(copyButton);
-            }
+            mediator.NotifyLocalClipboardChanged(this, cpbValue);
         }
 
-        private string PrepareClipboardText(string value)
+        /// <summary>
+        /// Register this form as a Clipboard Viewer application
+        /// </summary>
+        private void RegisterClipboardViewer()
         {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                return value;
-            }
+            _ClipboardViewerNext = Win32.User32.SetClipboardViewer(this.Handle);
+        }
 
-            var trimmedValue = value.Trim();
-
-            return trimmedValue.Substring(0, Math.Min(trimmedValue.Length, 25));
+        /// <summary>
+        /// Remove this form from the Clipboard Viewer list
+        /// </summary>
+        private void UnregisterClipboardViewer()
+        {
+            Win32.User32.ChangeClipboardChain(this.Handle, _ClipboardViewerNext);
         }
     }
 }

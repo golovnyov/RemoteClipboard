@@ -1,43 +1,58 @@
-﻿using System;
-using System.Threading.Tasks;
-using Azure.Messaging.ServiceBus;
+﻿using Azure.Messaging.ServiceBus;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using VH.RemoteClipboard.Configuration;
-using VH.RemoteClipboard.Events;
+using VH.RemoteClipboard.Mediator;
+using VH.RemoteClipboard.Models;
 
 namespace VH.RemoteClipboard.Services
 {
-    public class AzureServiceBusRemoteClipboardService : IRemoteClipboardService, IDisposable
+    public class AzureServiceBusRemoteClipboardService : IHostedService, IDisposable
     {
         private readonly ILogger logger;
         private readonly ServiceBusConfiguration serviceBusConfiguration;
+        private readonly IMediator mediator;
 
         private ServiceBusProcessor processor;
-        private ServiceBusClient client;
+        private readonly ServiceBusClient client;
 
-        public event ClipboardChangedEventHandler ClipboardChanged;
-
-        public AzureServiceBusRemoteClipboardService(ILogger<AzureServiceBusRemoteClipboardService> logger, IOptions<ServiceBusConfiguration> serviceBusOptions)
+        public AzureServiceBusRemoteClipboardService(
+            ILogger<AzureServiceBusRemoteClipboardService> logger,
+            IOptions<ServiceBusConfiguration> serviceBusOptions,
+            ServiceBusClient client,
+            IMediator mediator)
         {
             this.logger = logger;
-            serviceBusConfiguration = serviceBusOptions.Value;
+            this.serviceBusConfiguration = serviceBusOptions.Value;
+            this.client = client;
+            this.mediator = mediator;
         }
 
-        public async Task FetchClipboardDataAsync()
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
             await PeekMessageAsync();
         }
 
+        public async Task StopAsync(CancellationToken cancellationToken)
+        {
+            await Task.CompletedTask;
+        }
+
         protected virtual void OnClipboardChange(string value)
         {
-            ClipboardChanged?.Invoke(this, new ClipboardChangedEventArgs(value));
+            var cpbValue = new ClipboardValue();
+
+            cpbValue.SetText(value);
+
+            mediator.NotifyRemoteClipboardChanged(this, cpbValue);
         }
 
         private async Task PeekMessageAsync()
         {
-            client = new ServiceBusClient(serviceBusConfiguration.ConnectionString);
-
             var options = new ServiceBusProcessorOptions() { ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete };
 
             processor = client.CreateProcessor(serviceBusConfiguration.TopicName, serviceBusConfiguration.SubscriptionName, options);
@@ -54,22 +69,16 @@ namespace VH.RemoteClipboard.Services
 
         private async Task ProcessMessageHandlerAsync(ProcessMessageEventArgs processMessageEventArgs)
         {
-            logger.LogDebug("Processing message");
-
             string messageBody = processMessageEventArgs.Message.Body.ToString();
 
             OnClipboardChange(messageBody);
-
-            logger.LogDebug("Fetched message [{messageBody}]", messageBody);
-
-            logger.LogInformation("Remote clipboard data fetched at [{dateTimeNowUtc}]", DateTime.UtcNow);
 
             await Task.CompletedTask;
         }
 
         private Task ErrorHandler(ProcessErrorEventArgs args)
         {
-            logger.LogError(args.Exception, "An error ocurred while processing message");
+            logger.LogCritical(args.Exception, "An error ocurred while processing message");
 
             return Task.CompletedTask;
         }
