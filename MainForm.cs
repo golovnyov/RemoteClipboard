@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
-using VH.RemoteClipboard.Extensions;
 using VH.RemoteClipboard.Mediator;
 using VH.RemoteClipboard.Models;
 
@@ -157,7 +156,7 @@ namespace VH.RemoteClipboard
         {
             var labelDynamic = new Label()
             {
-                Text = text.PrepareClipboardText(),
+                Text = text,
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = Color.White,
                 Location = new Point() { X = 5, Y = 50 * y_position },
