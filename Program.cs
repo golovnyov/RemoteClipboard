@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Threading;
 using System.Windows.Forms;
 using VH.RemoteClipboard.Configuration;
 using VH.RemoteClipboard.Mediator;
@@ -18,6 +19,8 @@ namespace VH.RemoteClipboard
         [STAThread]
         static void Main(string[] args)
         {
+            var threadId = Thread.CurrentThread.ManagedThreadId;
+
             SetApplicationDefaults();
 
             var host = CreateHostBuilder(args).Build();

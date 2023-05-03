@@ -42,12 +42,12 @@ namespace VH.RemoteClipboard.Services
 
         private async void PublishClipboardValue(ClipboardValue clipboardValue)
         {
-            if (clipboardValue is null)
+            if (clipboardValue == default)
             {
                 throw new ArgumentNullException(nameof(clipboardValue));
             }
 
-            await SendMessageAsync(clipboardValue.GetText());
+            await SendMessageAsync(clipboardValue.text);
         }
 
         private async Task SendMessageAsync(string value)

@@ -44,9 +44,7 @@ namespace VH.RemoteClipboard.Services
 
         protected virtual void OnClipboardChange(string value)
         {
-            var cpbValue = new ClipboardValue();
-
-            cpbValue.SetText(value);
+            var cpbValue = new ClipboardValue(value);
 
             mediator.NotifyRemoteClipboardChanged(this, cpbValue);
         }
@@ -64,7 +62,7 @@ namespace VH.RemoteClipboard.Services
             processor.ProcessErrorAsync += ErrorHandler;
 
             // start processing 
-            await processor.StartProcessingAsync();
+            await processor.StartProcessingAsync().ConfigureAwait(true);
         }
 
         private async Task ProcessMessageHandlerAsync(ProcessMessageEventArgs processMessageEventArgs)

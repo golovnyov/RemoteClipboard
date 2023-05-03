@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Threading;
 using System.Windows.Forms;
+using VH.RemoteClipboard.Helpers;
 using VH.RemoteClipboard.Mediator;
 using VH.RemoteClipboard.Models;
 
@@ -126,16 +128,16 @@ namespace VH.RemoteClipboard
                 throw new ArgumentNullException(nameof(eventArgs));
             }
 
-            label4.BeginInvoke(new Action(() =>
+            StaThreadHelper.RunAsSTAThread(new Action(() =>
             {
-                label4.Text = DateTime.UtcNow.ToString();
-
-                Clipboard.SetText(eventArgs.ClipboardValue.GetText());
+                Clipboard.SetText(eventArgs.ClipboardValue.text);
             }));
         }
 
         private void RefreshUi(string value)
         {
+            var threadId = Thread.CurrentThread.ManagedThreadId;
+
             clipboardValues.Push(value);
 
             this.panel1.Controls.Clear();
@@ -150,6 +152,8 @@ namespace VH.RemoteClipboard
 
                 y_position++;
             }
+
+            label4.Text = DateTime.UtcNow.ToString();
         }
 
         private Label CreateLabel(string text, int y_position)
@@ -209,9 +213,7 @@ namespace VH.RemoteClipboard
 
             RefreshUi(clipboardText);
 
-            var cpbValue = new ClipboardValue();
-
-            cpbValue.SetText(clipboardText);
+            var cpbValue = new ClipboardValue(clipboardText);
 
             mediator.NotifyLocalClipboardChanged(this, cpbValue);
         }
